@@ -1,4 +1,3 @@
-# [START drive-watcher]
 from __future__ import print_function
 import pickle
 import os.path
@@ -13,13 +12,12 @@ import time
 import sys
 from pync import Notifier
 
-file_id = 'enter_file _id_here'
-duration_in_hours = 3
-duration_in_seconds = duration_in_hours * 60 * 60
+file_id = 'enter_file_id_here'
+duration_in_minutes = 180
 
-# If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly']
 drive_url = 'https://drive.google.com/file/d/' + file_id + '/view?usp=sharing'
+duration_in_seconds = duration_in_minutes * 60
 
 
 def notify(title, text):
@@ -40,7 +38,7 @@ def do_every(period, f, *args):
         f(*args)
 
 
-def getFileDetails(service):
+def getFileDetails(service, first_time=False):
     # Call the Drive v3 API
     item = service.files().get(fileId=file_id, fields='name, id, modifiedTime').execute()
 
@@ -48,17 +46,15 @@ def getFileDetails(service):
         print('No files found.')
     else:
         modified_date = parse(item['modifiedTime'])
-        current_date = datetime.utcnow().replace(tzinfo=pytz.utc)
-        difference = modified_date - current_date
+        last_checked = modified_date if first_time else datetime.utcnow().replace(tzinfo=pytz.utc)
+        difference = modified_date - last_checked
         drive_name = item['name']
-        if difference.total_seconds() > 0:
-            notify("File modified", drive_name)
+        if difference.total_seconds() + duration_in_seconds > 0 or first_time:
+            notify("Drive Watcher",
+                   '{0} was last modified at {1}'.format(drive_name, modified_date.strftime("%I:%M %p on %b %d, %Y")))
 
 
 def main():
-    """Shows basic usage of the Drive v3 API.
-    Prints the names and ids of the first 10 files the user has access to.
-    """
     creds = None
     # The file token.pickle stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -79,9 +75,12 @@ def main():
             pickle.dump(creds, token)
 
     service = build('drive', 'v3', credentials=creds)
+    print("Bingo! We are all set. just sit back and relax, Drive Watcher will notify you! Closing this window will "
+          "terminate the script. ")
+
+    getFileDetails(service=service, first_time=True)
     do_every(duration_in_seconds, getFileDetails, service)
 
 
 if __name__ == '__main__':
     main()
-# [END drive-watcher]
