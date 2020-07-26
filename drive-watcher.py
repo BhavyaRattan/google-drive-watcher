@@ -11,6 +11,7 @@ import os
 import time
 import sys
 from pync import Notifier
+from dateutil import tz
 
 file_id = 'enter_file_id_here'
 duration_in_minutes = 180
@@ -38,7 +39,7 @@ def do_every(period, f, *args):
         f(*args)
 
 
-def getFileDetails(service, first_time=False):
+def get_file_details(service, first_time=False):
     # Call the Drive v3 API
     item = service.files().get(fileId=file_id, fields='name, id, modifiedTime').execute()
 
@@ -51,7 +52,8 @@ def getFileDetails(service, first_time=False):
         drive_name = item['name']
         if difference.total_seconds() + duration_in_seconds > 0 or first_time:
             notify("Drive Watcher",
-                   '{0} was last modified at {1}'.format(drive_name, modified_date.strftime("%I:%M %p on %b %d, %Y")))
+                   '{0} was last modified at {1}'
+                   .format(drive_name, modified_date.astimezone(tz.tzlocal()).strftime("%I:%M %p on %b %d, %Y")))
 
 
 def main():
@@ -78,8 +80,8 @@ def main():
     print("Bingo! We are all set. just sit back and relax, Drive Watcher will notify you! Closing this window will "
           "terminate the script. ")
 
-    getFileDetails(service=service, first_time=True)
-    do_every(duration_in_seconds, getFileDetails, service)
+    get_file_details(service=service, first_time=True)
+    do_every(duration_in_seconds, get_file_details, service)
 
 
 if __name__ == '__main__':
